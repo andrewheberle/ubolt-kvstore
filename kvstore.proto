@@ -1,0 +1,50 @@
+syntax = "proto3";
+option go_package = "gitlab.com/andrewheberle/ubolt-kvstore;kvstore";
+
+package kvstore;
+
+service KeystoreService {
+    rpc ListKeys(BucketRequest) returns (ListKeysResponse) {}
+    rpc Get(GetRequest) returns (GetResponse) {}
+    rpc Put(PutRequest) returns (Empty) {}
+    rpc Delete(DeleteRequest) returns (Empty) {}
+
+    rpc DeleteBucket(BucketRequest) returns (Empty) {}
+    rpc CreateBucket(BucketRequest) returns (Empty) {}
+    rpc ListBuckets(Empty) returns (ListBucketsResponse) {}
+}
+
+message ListKeysResponse {
+    repeated string keys = 1;
+}
+
+message ListBucketsResponse {
+    repeated string buckets = 1;
+}
+
+message GetRequest {
+    string bucket = 1;
+    string key = 2;
+}
+
+message GetResponse {
+    bytes value = 1;
+}
+
+message PutRequest {
+    string bucket = 1;
+    string key = 2;
+    bytes value = 3;
+}
+
+message DeleteRequest {
+    string bucket = 1;
+    string key = 2;
+}
+
+message BucketRequest {
+    string bucket = 1;
+}
+
+message Empty {
+}
