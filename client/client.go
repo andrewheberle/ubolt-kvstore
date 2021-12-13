@@ -19,6 +19,7 @@ type Client struct {
 	address  string
 	cert     string
 	insecure bool
+	kv       pb.KeystoreServiceClient
 }
 
 type Result interface {
@@ -45,6 +46,71 @@ type KeyListResult struct {
 
 type KeyRequest struct {
 	Value []byte `json:"value"`
+}
+
+func Connect(address, cert string, insecure bool) (*Client, error) {
+	var err error
+	var creds credentials.TransportCredentials
+	var opts []grpc.DialOption
+
+	// connect to grpc api
+	if insecure {
+		opts = []grpc.DialOption{
+			grpc.WithInsecure(),
+			grpc.WithBlock(),
+		}
+	} else {
+		if cert == "" {
+			cp, err := x509.SystemCertPool()
+			if err != nil {
+				return nil, err
+			}
+			creds = credentials.NewClientTLSFromCert(cp, "")
+		} else {
+			creds, err = credentials.NewClientTLSFromFile(cert, "")
+			if err != nil {
+				return nil, err
+			}
+		}
+		opts = []grpc.DialOption{
+			grpc.WithBlock(),
+			grpc.WithTransportCredentials(creds),
+		}
+	}
+
+	conn, err := grpc.Dial(address, opts)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Client{address: address, cert: cert, insecure: insecure, kv: pb.NewKeystoreServiceClient(conn)}, nil
+}
+
+func (client *Client) Get(ctx context.Context, bucket, key string) ([]byte, error) {
+	res, err := client.kv.Get(ctx, &pb.GetRequest{Bucket: bucket, Key: key}, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	return res.Value, nil
+}
+
+func (client *Client) Put(ctx context.Context, bucket, key string, value []byte) error {
+	_, err := client.kv.Put(ctx, &pb.PutRequest{Bucket: bucket, Key: key, Value: value}, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (client *Client) Delete(ctx context.Context, bucket, key string) error {
+	_, err := client.kv.Delete(ctx, &pb.DeleteRequest{Bucket: bucket, Key: key}, nil)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func NewClient(address string) (*Client, error) {
