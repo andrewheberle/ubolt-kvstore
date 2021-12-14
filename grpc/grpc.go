@@ -12,11 +12,12 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-func NewgRPCServer(addr string, srv pb.KeystoreServiceServer) (*grpc.Server, error) {
-	return NewTLSgRPCServer(addr, "", "", srv)
+func NewgRPCServer(srv pb.KeystoreServiceServer) (*grpc.Server, error) {
+	return NewTLSgRPCServer("", "", srv)
 }
 
-func NewTLSgRPCServer(addr, cert, key string, srv pb.KeystoreServiceServer) (s *grpc.Server, err error) {
+func NewTLSgRPCServer(cert, key string, srv pb.KeystoreServiceServer) (*grpc.Server, error) {
+	var opts []grpc.ServerOption
 	logger := zerolog.New(os.Stderr)
 
 	// add TLS support
@@ -27,34 +28,36 @@ func NewTLSgRPCServer(addr, cert, key string, srv pb.KeystoreServiceServer) (s *
 		}
 
 		// set up TLS enabled server
-		s = grpc.NewServer(grpc.StreamInterceptor(
-			middleware.ChainStreamServer(
-				logging.StreamServerInterceptor(grpczerolog.InterceptorLogger(logger)),
+		opts = []grpc.ServerOption{
+			grpc.StreamInterceptor(
+				middleware.ChainStreamServer(
+					logging.StreamServerInterceptor(grpczerolog.InterceptorLogger(logger)),
+				),
 			),
-		),
 			grpc.UnaryInterceptor(
 				middleware.ChainUnaryServer(
 					logging.UnaryServerInterceptor(grpczerolog.InterceptorLogger(logger)),
 				),
 			),
 			grpc.Creds(cred),
-		)
+		}
 	} else {
 		// set up non-TLS enabled server
-		// set up TLS enabled server
-		s = grpc.NewServer(grpc.StreamInterceptor(
-			middleware.ChainStreamServer(
-				logging.StreamServerInterceptor(grpczerolog.InterceptorLogger(logger)),
+		opts = []grpc.ServerOption{
+			grpc.StreamInterceptor(
+				middleware.ChainStreamServer(
+					logging.StreamServerInterceptor(grpczerolog.InterceptorLogger(logger)),
+				),
 			),
-		),
 			grpc.UnaryInterceptor(
 				middleware.ChainUnaryServer(
 					logging.UnaryServerInterceptor(grpczerolog.InterceptorLogger(logger)),
 				),
 			),
-		)
+		}
 	}
 
+	s := grpc.NewServer(opts...)
 	pb.RegisterKeystoreServiceServer(s, srv)
 
 	return s, nil
