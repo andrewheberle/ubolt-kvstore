@@ -2,30 +2,88 @@ package server
 
 import (
 	"context"
+	"os"
 
+	grpczerolog "github.com/grpc-ecosystem/go-grpc-middleware/providers/zerolog/v2"
+	middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2"
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
+	"github.com/rs/zerolog"
 	"gitlab.com/andrewheberle/ubolt"
 	pb "gitlab.com/andrewheberle/ubolt-kvstore"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
-type Server struct {
+type KvStoreService struct {
 	db *ubolt.DB
 	pb.UnimplementedKeystoreServiceServer
 }
 
-func NewServer(file string) (*Server, error) {
+func NewKvStoreService(file string) (*KvStoreService, error) {
 	db, err := ubolt.Open(file)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Server{db: db}, nil
+	return &KvStoreService{db: db}, nil
 }
 
-func (srv *Server) Close() error {
+func (srv *KvStoreService) Close() error {
 	return srv.db.Close()
 }
 
-func (srv *Server) Get(ctx context.Context, in *pb.GetRequest) (*pb.GetResponse, error) {
+func (srv *KvStoreService) NewServer() (*grpc.Server, error) {
+	return srv.NewTLSServer("", "")
+}
+
+func (srv *KvStoreService) NewTLSServer(cert, key string) (*grpc.Server, error) {
+	var opts []grpc.ServerOption
+	logger := zerolog.New(os.Stderr)
+
+	// add TLS support
+	if cert != "" && key != "" {
+		cred, err := credentials.NewServerTLSFromFile(cert, key)
+		if err != nil {
+			return nil, err
+		}
+
+		// set up TLS enabled server
+		opts = []grpc.ServerOption{
+			grpc.StreamInterceptor(
+				middleware.ChainStreamServer(
+					logging.StreamServerInterceptor(grpczerolog.InterceptorLogger(logger)),
+				),
+			),
+			grpc.UnaryInterceptor(
+				middleware.ChainUnaryServer(
+					logging.UnaryServerInterceptor(grpczerolog.InterceptorLogger(logger)),
+				),
+			),
+			grpc.Creds(cred),
+		}
+	} else {
+		// set up non-TLS enabled server
+		opts = []grpc.ServerOption{
+			grpc.StreamInterceptor(
+				middleware.ChainStreamServer(
+					logging.StreamServerInterceptor(grpczerolog.InterceptorLogger(logger)),
+				),
+			),
+			grpc.UnaryInterceptor(
+				middleware.ChainUnaryServer(
+					logging.UnaryServerInterceptor(grpczerolog.InterceptorLogger(logger)),
+				),
+			),
+		}
+	}
+
+	s := grpc.NewServer(opts...)
+	pb.RegisterKeystoreServiceServer(s, srv)
+
+	return s, nil
+}
+
+func (srv *KvStoreService) Get(ctx context.Context, in *pb.GetRequest) (*pb.GetResponse, error) {
 	data, err := srv.db.GetE([]byte(in.GetBucket()), []byte(in.GetKey()))
 	if err != nil {
 		return nil, err
@@ -34,7 +92,7 @@ func (srv *Server) Get(ctx context.Context, in *pb.GetRequest) (*pb.GetResponse,
 	return &pb.GetResponse{Value: data}, nil
 }
 
-func (srv *Server) Put(ctx context.Context, in *pb.PutRequest) (*pb.Empty, error) {
+func (srv *KvStoreService) Put(ctx context.Context, in *pb.PutRequest) (*pb.Empty, error) {
 	err := srv.db.Put([]byte(in.GetBucket()), []byte(in.GetKey()), in.GetValue())
 	if err != nil {
 		return nil, err
@@ -43,7 +101,7 @@ func (srv *Server) Put(ctx context.Context, in *pb.PutRequest) (*pb.Empty, error
 	return &pb.Empty{}, nil
 }
 
-func (srv *Server) Delete(ctx context.Context, in *pb.DeleteRequest) (*pb.Empty, error) {
+func (srv *KvStoreService) Delete(ctx context.Context, in *pb.DeleteRequest) (*pb.Empty, error) {
 	err := srv.db.Delete([]byte(in.GetBucket()), []byte(in.GetKey()))
 	if err != nil {
 		return nil, err
@@ -52,7 +110,7 @@ func (srv *Server) Delete(ctx context.Context, in *pb.DeleteRequest) (*pb.Empty,
 	return &pb.Empty{}, nil
 }
 
-func (srv *Server) DeleteBucket(ctx context.Context, in *pb.BucketRequest) (*pb.Empty, error) {
+func (srv *KvStoreService) DeleteBucket(ctx context.Context, in *pb.BucketRequest) (*pb.Empty, error) {
 	err := srv.db.DeleteBucket([]byte(in.GetBucket()))
 	if err != nil {
 		return nil, err
@@ -61,7 +119,7 @@ func (srv *Server) DeleteBucket(ctx context.Context, in *pb.BucketRequest) (*pb.
 	return &pb.Empty{}, nil
 }
 
-func (srv *Server) CreateBucket(ctx context.Context, in *pb.BucketRequest) (*pb.Empty, error) {
+func (srv *KvStoreService) CreateBucket(ctx context.Context, in *pb.BucketRequest) (*pb.Empty, error) {
 	err := srv.db.CreateBucket([]byte(in.GetBucket()))
 	if err != nil {
 		return nil, err
@@ -70,7 +128,7 @@ func (srv *Server) CreateBucket(ctx context.Context, in *pb.BucketRequest) (*pb.
 	return &pb.Empty{}, nil
 }
 
-func (srv *Server) ListKeys(ctx context.Context, in *pb.BucketRequest) (*pb.ListKeysResponse, error) {
+func (srv *KvStoreService) ListKeys(ctx context.Context, in *pb.BucketRequest) (*pb.ListKeysResponse, error) {
 	var keys []string
 
 	// grab keys
@@ -87,7 +145,7 @@ func (srv *Server) ListKeys(ctx context.Context, in *pb.BucketRequest) (*pb.List
 	return &pb.ListKeysResponse{Keys: keys}, nil
 }
 
-func (srv *Server) ListBuckets(ctx context.Context, in *pb.Empty) (*pb.ListBucketsResponse, error) {
+func (srv *KvStoreService) ListBuckets(ctx context.Context, in *pb.Empty) (*pb.ListBucketsResponse, error) {
 	var buckets []string
 
 	// grab buckets

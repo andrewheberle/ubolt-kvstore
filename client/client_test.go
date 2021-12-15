@@ -8,12 +8,11 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"gitlab.com/andrewheberle/ubolt-kvstore/grpc"
 	"gitlab.com/andrewheberle/ubolt-kvstore/server"
 )
 
 func testserver(db, addr string) error {
-	srv, err := server.NewServer(db)
+	srv, err := server.NewKvStoreService(db)
 	if err != nil {
 		return err
 	}
@@ -29,7 +28,7 @@ func testserver(db, addr string) error {
 		}
 	}()
 
-	server, err := grpc.NewgRPCServer(srv)
+	server, err := srv.NewServer()
 	if err != nil {
 		return err
 	}
@@ -72,12 +71,19 @@ func TestConnect(t *testing.T) {
 	}()
 
 	for _, tt := range tests {
-		_, err := Connect(tt.address, tt.cert, tt.insecure)
-		if tt.wantErr {
-			assert.NotNil(t, err)
-		} else {
-			assert.Nil(t, err)
-		}
+		func() {
+			// set up context
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+			defer cancel()
+
+			// connect to kv service
+			_, err := Connect(ctx, tt.address, tt.cert, tt.insecure)
+			if tt.wantErr {
+				assert.NotNil(t, err)
+			} else {
+				assert.Nil(t, err)
+			}
+		}()
 	}
 }
 
@@ -89,8 +95,12 @@ func TestGetPutDelete(t *testing.T) {
 		}
 	}()
 
+	// set up context
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+
 	// connect
-	client, err := Connect("127.0.0.1:8081", "", true)
+	client, err := Connect(ctx, "127.0.0.1:8081", "", true)
 	if err != nil {
 		panic(err)
 	}
