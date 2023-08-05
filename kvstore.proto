@@ -1,5 +1,5 @@
 syntax = "proto3";
-option go_package = "gitlab.com/andrewheberle/ubolt-kvstore;kvstore";
+option go_package = "github.com/andrewheberle/ubolt-kvstore;kvstore";
 
 package kvstore;
 
