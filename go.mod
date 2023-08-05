@@ -4,8 +4,8 @@ go 1.20
 
 require (
 	github.com/andrewheberle/ubolt v1.6.0
-	github.com/grpc-ecosystem/go-grpc-middleware/providers/zerolog/v2 v2.0.0-rc.2
-	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.0-rc.2
+	github.com/grpc-ecosystem/go-grpc-middleware/providers/zerolog/v2 v2.0.0-rc.3
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.0.0-rc.2.0.20201002093600-73cf2ae9d891
 	github.com/rs/zerolog v1.30.0
 	github.com/stretchr/testify v1.8.4
 	google.golang.org/grpc v1.43.0
