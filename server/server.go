@@ -4,12 +4,12 @@ import (
 	"context"
 	"os"
 
+	pb "github.com/andrewheberle/ubolt-kvstore"
 	grpczerolog "github.com/grpc-ecosystem/go-grpc-middleware/providers/zerolog/v2"
 	middleware "github.com/grpc-ecosystem/go-grpc-middleware/v2"
 	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/logging"
 	"github.com/rs/zerolog"
 	"gitlab.com/andrewheberle/ubolt"
-	pb "gitlab.com/andrewheberle/ubolt-kvstore"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )

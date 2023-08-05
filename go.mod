@@ -1,4 +1,4 @@
-module gitlab.com/andrewheberle/ubolt-kvstore
+module github.com/andrewheberle/ubolt-kvstore
 
 go 1.16
 

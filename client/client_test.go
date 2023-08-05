@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/andrewheberle/ubolt-kvstore/server"
 	"github.com/stretchr/testify/assert"
-	"gitlab.com/andrewheberle/ubolt-kvstore/server"
 )
 
 func testserver(db, addr string) error {

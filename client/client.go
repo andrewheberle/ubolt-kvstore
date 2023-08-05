@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 
-	pb "gitlab.com/andrewheberle/ubolt-kvstore"
+	pb "github.com/andrewheberle/ubolt-kvstore"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 )
