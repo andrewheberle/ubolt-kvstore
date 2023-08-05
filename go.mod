@@ -1,6 +1,6 @@
 module github.com/andrewheberle/ubolt-kvstore
 
-go 1.19
+go 1.20
 
 require (
 	github.com/andrewheberle/ubolt v1.6.0
